@@ -1,0 +1,6 @@
+include LICENSE
+include MANIFEST.in
+include README.rst
+recursive-include prune_uploads/static *
+recursive-include prune_uploads/locale *
+recursive-include prune_uploads/templates *
