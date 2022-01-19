@@ -23,12 +23,12 @@ class Command(BaseCommand):
             help="Delete orphaned files.",
         )
         parser.add_argument(
-            "--nullify-missing",
+            "--blank-missing",
             action="append",
             metavar="app.model.field",
             default=[],
             help=(
-                "Empty nullable file field <app.model.field> if referenced"
+                "Empty blank file field <app.model.field> if referenced"
                 " media file is missing."
             ),
         )
@@ -49,8 +49,8 @@ class Command(BaseCommand):
         delete_invalid_names = {f.lower() for f in options["delete_invalid"]}
         delete_invalid_fields = set()
 
-        nullify_missing_names = {f.lower() for f in options["nullify_missing"]}
-        nullify_missing_fields = set()
+        blank_missing_names = {f.lower() for f in options["blank_missing"]}
+        blank_missing_fields = set()
 
         for model in apps.get_models():
             for field in model._meta.get_fields():
@@ -62,21 +62,19 @@ class Command(BaseCommand):
                 if key in delete_invalid_names:
                     delete_invalid_names.remove(key)
                     delete_invalid_fields.add(field)
-                if key in nullify_missing_names:
-                    nullify_missing_names.remove(key)
-                    nullify_missing_fields.add(field)
+                if key in blank_missing_names:
+                    blank_missing_names.remove(key)
+                    blank_missing_fields.add(field)
 
         if delete_invalid_names:
             raise Exception("delete-invalid: Invalid fields %r" % delete_invalid_names)
-        if nullify_missing_names:
-            raise Exception(
-                "nullify-missing: Invalid fields %r" % nullify_missing_names
-            )
+        if blank_missing_names:
+            raise Exception("blank-missing: Invalid fields %r" % blank_missing_names)
 
-        print("\n")
-        print("#" * 79)
-        print("File fields:")
-        print(
+        self.stdout.write("\n")
+        self.stdout.write("#" * 79)
+        self.stdout.write("File fields:")
+        self.stdout.write(
             "\n".join(
                 sorted(
                     "{}: {}".format(
@@ -86,7 +84,7 @@ class Command(BaseCommand):
                 )
             )
         )
-        print()
+        self.stdout.write()
 
         known_with_source = {}
 
@@ -100,9 +98,9 @@ class Command(BaseCommand):
 
         known = set(known_with_source.keys())
 
-        print("\n")
-        print("#" * 79)
-        print("Known media files: %d" % len(known))
+        self.stdout.write("\n")
+        self.stdout.write("#" * 79)
+        self.stdout.write("Known media files: %d" % len(known))
 
         existing = set()
         for dirpath, dirnames, filenames in os.walk(
@@ -121,18 +119,20 @@ class Command(BaseCommand):
             if e.startswith(settings.MEDIA_ROOT)
         }
 
-        print("Found media files: %d" % len(existing))
+        self.stdout.write("Found media files: %d" % len(existing))
 
-        print("\n")
-        print("#" * 79)
-        print("Media files not in file system: %d" % (len(known - existing)))
+        self.stdout.write("\n")
+        self.stdout.write("#" * 79)
+        self.stdout.write(
+            "Media files not in file system: %d" % (len(known - existing))
+        )
         missing = defaultdict(list)
 
         for name in sorted(known - existing):
             model, field, pk = known_with_source[name]
 
-            if field.blank and field in nullify_missing_fields:
-                print(
+            if field.blank and field in blank_missing_fields:
+                self.stdout.write(
                     "Emptying {}.{} of {} ({})".format(
                         model._meta.label, field.name, pk, name
                     )
@@ -144,7 +144,7 @@ class Command(BaseCommand):
                 )
 
             elif field in delete_invalid_fields:
-                print(
+                self.stdout.write(
                     "Deleting {} of {} because of invalid {} ({})".format(
                         model._meta.label, pk, field.name, name
                     )
@@ -155,7 +155,7 @@ class Command(BaseCommand):
                 missing[(model, field)].append(name)
 
         for key, value in missing.items():
-            print(
+            self.stdout.write(
                 "{}.{}: {}".format(
                     key[0]._meta.label,
                     key[1].name,
@@ -163,17 +163,17 @@ class Command(BaseCommand):
                 )
             )
             if options["verbosity"] > 1:
-                print("\n".join(sorted(value)))
-                print()
+                self.stdout.write("\n".join(sorted(value)))
+                self.stdout.write()
 
-        print("\n")
-        print("#" * 79)
-        print("Media files not in DB: %d" % (len(existing - known)))
+        self.stdout.write("\n")
+        self.stdout.write("#" * 79)
+        self.stdout.write("Media files not in DB: %d" % (len(existing - known)))
 
         if options["delete_orphans"]:
             for name in sorted(existing - known):
-                print(f"Deleting {name}")
+                self.stdout.write(f"Deleting {name}")
                 os.remove(os.path.join(settings.MEDIA_ROOT, name))
         else:
             if options["verbosity"] > 1:
-                print("\n".join(sorted(existing - known)))
+                self.stdout.write("\n".join(sorted(existing - known)))
