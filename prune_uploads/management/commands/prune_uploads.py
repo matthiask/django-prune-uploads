@@ -113,10 +113,11 @@ class Command(BaseCommand):
 
             existing |= {os.path.join(dirpath, name) for name in filenames}
 
+        media_root = str(settings.MEDIA_ROOT)
         existing = {
-            e[len(settings.MEDIA_ROOT) :].lstrip("/")
+            e[len(media_root) :].lstrip("/")
             for e in existing
-            if e.startswith(settings.MEDIA_ROOT)
+            if e.startswith(media_root)
         }
 
         self.stdout.write("Found media files: %d" % len(existing))
